@@ -12,6 +12,7 @@
 #   GK_PREFIX         install dir for archive installs (default: /usr/local/bin)
 #   GK_RELEASE_JSON   path to a saved GitHub release JSON (offline/testing)
 #   GITHUB_TOKEN      optional, raises GitHub API rate limit
+#   GK_OS_RELEASE     os-release file to read (default: /etc/os-release; testing)
 
 set -euo pipefail
 
@@ -19,6 +20,7 @@ REPO="gitkraken/gk-cli"
 GK_TAG="${GK_VERSION:-latest}"
 PREFIX="${GK_PREFIX:-/usr/local/bin}"
 DRY_RUN=0
+OS_RELEASE="${GK_OS_RELEASE:-/etc/os-release}"
 
 log()  { printf '[gk-install] %s\n' "$*" >&2; }
 die()  { log "ERROR: $*"; exit 1; }
@@ -50,26 +52,31 @@ detect_distro() {
     id="$(lsb_release -is 2>/dev/null || true)"
     codename="$(lsb_release -cs 2>/dev/null || true)"
   fi
-  if [[ -r /etc/os-release ]]; then
+  if [[ -r "${OS_RELEASE}" ]]; then
     # Read in a subshell: os-release defines VERSION etc., which must not
     # leak into this script's namespace.
     local osr
-    # shellcheck disable=SC1091
-    osr="$(. /etc/os-release; printf '%s\n%s\n%s\n' "${ID:-}" "${VERSION_CODENAME:-}" "${ID_LIKE:-}")"
-    { read -r os_id; read -r os_codename; read -r like; } <<<"$osr"
+    # shellcheck disable=SC1090,SC1091
+    osr="$(. "${OS_RELEASE}"; printf '%s\n%s\n%s\n' "${ID:-}" "${VERSION_CODENAME:-}" "${ID_LIKE:-}")"
+    # $(...) strips trailing empty lines (e.g. no ID_LIKE on Debian/Fedora),
+    # so a short read is expected and must not trip `set -e`.
+    { read -r os_id || true; read -r os_codename || true; read -r like || true; } <<<"$osr"
     [[ -z "$id" ]] && id="$os_id"
     [[ -z "$codename" ]] && codename="$os_codename"
   fi
   DISTRO_ID="$(tr '[:upper:]' '[:lower:]' <<<"$id")"
   DISTRO_CODENAME="${codename:-unknown}"
   DISTRO_LIKE="$(tr '[:upper:]' '[:lower:]' <<<"$like")"
+  OS_ID="$(tr '[:upper:]' '[:lower:]' <<<"$os_id")"
 }
 
 pkg_family() {
-  local s=" $DISTRO_ID $DISTRO_LIKE "
+  # lsb_release IDs differ from os-release ones (e.g. RedHatEnterprise vs rhel),
+  # so match on both plus ID_LIKE.
+  local s=" $DISTRO_ID $OS_ID $DISTRO_LIKE "
   case "$s" in
     *" debian "*|*" ubuntu "*|*" linuxmint "*|*" pop "*|*" raspbian "*|*" kali "*) echo deb ;;
-    *" fedora "*|*" rhel "*|*" centos "*|*" rocky "*|*" almalinux "*|*" suse "*|*" opensuse"*|*" sles "*|*" amzn "*) echo rpm ;;
+    *" fedora "*|*" rhel "*|*" redhatenterprise"*|*" centos "*|*" rocky "*|*" almalinux "*|*" suse "*|*" opensuse"*|*" sles "*|*" amzn "*) echo rpm ;;
     *) echo archive ;;
   esac
 }

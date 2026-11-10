@@ -32,3 +32,16 @@ The script:
 
 Environment: `GK_VERSION`, `GK_PREFIX`, `GITHUB_TOKEN` (rate limit),
 `GK_RELEASE_JSON` (saved release JSON for offline testing).
+
+## Tests / CI
+
+```bash
+shellcheck install-gk.sh tests/*.sh
+tests/dry-run.sh deb        # expected method for the current host: deb | rpm | archive
+```
+
+`tests/dry-run.sh` runs the installer in `--dry-run` mode against
+`tests/fixtures/release.json` (no network) and checks the selected asset,
+including the fallback to an archive. GitHub Actions (`.github/workflows/ci.yml`)
+runs ShellCheck and the dry-run in Ubuntu 24.04, Debian 12, Fedora 41 and Arch
+containers.
