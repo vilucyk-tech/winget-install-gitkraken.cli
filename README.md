@@ -1,31 +1,39 @@
 # winget-install-gitkraken.cli
 
-Scripts that install [GitKraken CLI](https://github.com/gitkraken/gk-cli) (`gk`).
+Installs [GitKraken CLI](https://github.com/gitkraken/gk-cli) (`gk`) on Windows via winget.
 
-## Windows (winget)
+## Quick install
 
 ```powershell
-.\install.ps1
-# or manually:
 winget install --id GitKraken.cli --exact
 ```
 
-If the package ID has changed, check it with: `winget search gitkraken`.
+## Using the script
 
-## Ubuntu / Debian (tested target: Ubuntu 24.04 "noble")
+```powershell
+# One-time: allow local scripts for the current user
+Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
+# If the file was downloaded from the internet:
+Unblock-File .\install.ps1
 
-```bash
-chmod +x install.sh
-./install.sh          # official .deb from GitHub Releases, falls back to npm
-./install.sh --npm    # npm only (@gitkraken/gk)
+.\install.ps1
 ```
 
-The `.deb` package is installed with `apt-get install ./file.deb`, so apt resolves its dependencies.
-No separate APT repository is added, so `$(lsb_release -cs)` is printed for information only.
+The script checks whether `gk` and `winget` are present, installs the package, and refreshes `PATH` for the current session.
+
+If the package ID has changed, check it with: `winget search gitkraken`.
 
 ## After installation
 
-```bash
+```powershell
 gk version
 gk auth login
 ```
+
+## Troubleshooting
+
+| Symptom | Fix |
+|---|---|
+| `winget` is not recognized | Install/update "App Installer" from Microsoft Store |
+| `gk` not found after install | Open a new terminal |
+| Script blocked by execution policy | `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`, then `Unblock-File .\install.ps1` |
