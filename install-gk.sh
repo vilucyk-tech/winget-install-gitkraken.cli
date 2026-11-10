@@ -16,7 +16,7 @@
 set -euo pipefail
 
 REPO="gitkraken/gk-cli"
-VERSION="${GK_VERSION:-latest}"
+GK_TAG="${GK_VERSION:-latest}"
 PREFIX="${GK_PREFIX:-/usr/local/bin}"
 DRY_RUN=0
 
@@ -28,7 +28,7 @@ need() { command -v "$1" >/dev/null 2>&1 || die "required command not found: $1"
 while (( $# )); do
   case "$1" in
     --dry-run) DRY_RUN=1 ;;
-    --version) VERSION="${2:?--version needs a value}"; shift ;;
+    --version) GK_TAG="${2:?--version needs a value}"; shift ;;
     --prefix)  PREFIX="${2:?--prefix needs a value}"; shift ;;
     -h|--help) sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) die "unknown argument: $1" ;;
@@ -45,17 +45,20 @@ fi
 
 # --- distribution detection ------------------------------------------------
 detect_distro() {
-  local id="" codename="" like=""
+  local id="" codename="" like="" os_id="" os_codename=""
   if command -v lsb_release >/dev/null 2>&1; then
     id="$(lsb_release -is 2>/dev/null || true)"
     codename="$(lsb_release -cs 2>/dev/null || true)"
   fi
   if [[ -r /etc/os-release ]]; then
+    # Read in a subshell: os-release defines VERSION etc., which must not
+    # leak into this script's namespace.
+    local osr
     # shellcheck disable=SC1091
-    . /etc/os-release
-    [[ -z "$id" ]] && id="${ID:-}"
-    [[ -z "$codename" ]] && codename="${VERSION_CODENAME:-}"
-    like="${ID_LIKE:-}"
+    osr="$(. /etc/os-release; printf '%s\n%s\n%s\n' "${ID:-}" "${VERSION_CODENAME:-}" "${ID_LIKE:-}")"
+    { read -r os_id; read -r os_codename; read -r like; } <<<"$osr"
+    [[ -z "$id" ]] && id="$os_id"
+    [[ -z "$codename" ]] && codename="$os_codename"
   fi
   DISTRO_ID="$(tr '[:upper:]' '[:lower:]' <<<"$id")"
   DISTRO_CODENAME="${codename:-unknown}"
@@ -83,7 +86,7 @@ detect_arch() {
 fetch_release_json() {
   if [[ -n "${GK_RELEASE_JSON:-}" ]]; then cat "$GK_RELEASE_JSON"; return; fi
   local url="https://api.github.com/repos/$REPO/releases/latest"
-  [[ "$VERSION" != latest ]] && url="https://api.github.com/repos/$REPO/releases/tags/$VERSION"
+  [[ "$GK_TAG" != latest ]] && url="https://api.github.com/repos/$REPO/releases/tags/$GK_TAG"
   local auth=()
   [[ -n "${GITHUB_TOKEN:-}" ]] && auth=(-H "Authorization: Bearer $GITHUB_TOKEN")
   curl -fsSL "${auth[@]}" -H 'Accept: application/vnd.github+json' "$url"
@@ -119,7 +122,7 @@ main() {
   log "distro: ${DISTRO_ID:-unknown} ($DISTRO_CODENAME), arch: $arch, method: $family"
 
   local json urls
-  json="$(fetch_release_json)" || die "cannot fetch release info for $REPO ($VERSION)"
+  json="$(fetch_release_json)" || die "cannot fetch release info for $REPO ($GK_TAG)"
   urls="$(asset_urls <<<"$json")"
   [[ -n "$urls" ]] || die "release has no downloadable assets"
 
