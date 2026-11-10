@@ -1,9 +1,9 @@
-# RouterOS v7: environment variables for the Alpine container
-# Import: /import file-name=alpine-env.rsc
+# RouterOS v7: змінні для контейнера alpine
+# Файл у корені Files, далі: /import file-name=alpine-env.rsc
 
-/container/envs
-# remove old entries of this list so the import can be run again
-remove [find where list="alpine_env"]
-add list=alpine_env key=TZ value="Europe/Kyiv"
-add list=alpine_env key=MY_VAR value=test
-print where list="alpine_env"
+:foreach i in=[/container/envs/find where list="alpine_env"] do={
+    /container/envs/remove $i
+}
+/container/envs/add list=alpine_env key=TZ value="Europe/Kyiv"
+/container/envs/add list=alpine_env key=MY_VAR value=test
+/container/envs/print where list="alpine_env"
