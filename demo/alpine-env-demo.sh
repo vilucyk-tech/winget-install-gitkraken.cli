@@ -30,8 +30,9 @@ if [ ! -f "$ROOT/etc/alpine-release" ]; then
     echo "[завантаження alpine:latest з mirror.gcr.io]"
     mkdir -p "$ROOT"
     R=https://mirror.gcr.io/v2/library/alpine
+    case $(uname -m) in aarch64|arm64) ARCH=arm64;; armv7*) ARCH=arm;; *) ARCH=amd64;; esac
     ACC='-H Accept:application/vnd.oci.image.index.v1+json -H Accept:application/vnd.docker.distribution.manifest.list.v2+json -H Accept:application/vnd.oci.image.manifest.v1+json -H Accept:application/vnd.docker.distribution.manifest.v2+json'
-    D=$(curl -fsS $ACC $R/manifests/latest | python3 -c 'import sys,json;print([m["digest"] for m in json.load(sys.stdin)["manifests"] if m["platform"]["os"]=="linux" and m["platform"]["architecture"]=="amd64"][0])')
+    D=$(curl -fsS $ACC $R/manifests/latest | python3 -c 'import sys,json;print([m["digest"] for m in json.load(sys.stdin)["manifests"] if m["platform"]["os"]=="linux" and m["platform"]["architecture"]==sys.argv[1]][0])' $ARCH)
     L=$(curl -fsS $ACC $R/manifests/$D | python3 -c 'import sys,json;print(json.load(sys.stdin)["layers"][0]["digest"])')
     curl -fsSL $R/blobs/$L | tar -xz -C "$ROOT"
 fi
