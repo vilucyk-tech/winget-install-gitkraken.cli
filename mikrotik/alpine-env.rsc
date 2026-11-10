@@ -5,15 +5,18 @@
 # Передумови (скрипт їх не робить):
 #   1) встановлено пакет container (/system/package/print);
 #   2) /system/device-mode/update container=yes + підтвердження кнопкою/перезавантаженням;
-#   3) є диск для образів (/disk/print) - вкажіть його в DISK нижче.
+#   3) місце для образів: DISK="" - системне сховище (типово для CHR),
+#      або назва диска з /disk/print (disk1, usb1, ...).
 
 {
     # ---- параметри ----
-    :local DISK "disk1"
+    :local DISK ""
     :local NAME "alpine"
     :local ENVL "alpine_env"
     :local VETH "veth-alpine"
     :local BR "containers"
+    :local P "containers"
+    :if ($DISK != "") do={ :set P ($DISK . "/containers") }
 
     # ---- мережа: veth + bridge + NAT ----
     :if ([:len [/interface/veth/find where name=$VETH]] = 0) do={
@@ -33,7 +36,7 @@
     }
 
     # ---- реєстр і тимчасова тека ----
-    /container/config/set registry-url=https://registry-1.docker.io tmpdir=("$DISK/tmp")
+    /container/config/set registry-url=https://registry-1.docker.io tmpdir=("$P/tmp")
 
     # ---- змінні середовища ----
     :foreach i in=[/container/envs/find where list=$ENVL] do={ /container/envs/remove $i }
@@ -49,7 +52,7 @@
     :if ([:len $c] = 0) do={
         # без cmd Alpine (/bin/sh без TTY) одразу завершується - тримаємо процес живим
         /container/add name=$NAME remote-image=alpine:latest interface=$VETH \
-            root-dir=("$DISK/images/$NAME") envlist=$ENVL \
+            root-dir=("$P/$NAME") envlist=$ENVL \
             cmd="tail -f /dev/null" start-on-boot=yes logging=yes
         :set c [/container/find where name=$NAME]
     } else={
