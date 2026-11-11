@@ -29,7 +29,7 @@ Console: `vmconnect.exe localhost CHR`. Login `admin`, empty password; set a new
 
 ```routeros
 /system identity set name=CHR-LAB
-/ip dhcp-client add interface=ether1 disabled=no
+# ether1 already has a DHCP client on a fresh CHR (client1, bound) - nothing to add for WAN
 /ip address add address=192.168.88.1/24 interface=ether2
 /ip pool add name=lan-pool ranges=192.168.88.10-192.168.88.200
 /ip dhcp-server add name=lan-dhcp interface=ether2 address-pool=lan-pool disabled=no
@@ -44,7 +44,9 @@ add chain=input in-interface=ether1 protocol=icmp action=accept
 add chain=input in-interface=ether1 action=drop comment="drop all other input from WAN"
 ```
 
-If `ether1` already has a DHCP client (the CHR default), the second line fails harmlessly with "already have".
+This config was validated on CHR 7.25.1 (QEMU): an Alpine client on ether2 got
+`192.168.88.200/24` via DHCP, reached the WAN side through masquerade, and SSH from
+the WAN side was dropped by the input filter.
 
 Check:
 
