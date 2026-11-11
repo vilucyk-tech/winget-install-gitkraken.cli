@@ -37,6 +37,10 @@ function Log([string]$m) { Write-Host "[chr] $m" -ForegroundColor Cyan }
 if (Get-VM -Name $VMName -ErrorAction SilentlyContinue) {
     throw "VM '$VMName' already exists. Choose another -VMName or remove it first."
 }
+# Validate the WAN switch before downloading anything
+if (-not (Get-VMSwitch -Name $WanSwitch -ErrorAction SilentlyContinue)) {
+    throw "WAN switch '$WanSwitch' not found. Existing switches: $((Get-VMSwitch).Name -join ', ')"
+}
 
 # --- 1. Version -------------------------------------------------------------
 if (-not $Version) {
@@ -72,10 +76,7 @@ if (-not $vhdx) { throw "No .vhdx found in $zipPath" }
 $disk = Join-Path $vmDir "$VMName.vhdx"
 if (-not (Test-Path $disk)) { Copy-Item $vhdx.FullName $disk }
 
-# --- 3. Switches ------------------------------------------------------------
-if (-not (Get-VMSwitch -Name $WanSwitch -ErrorAction SilentlyContinue)) {
-    throw "WAN switch '$WanSwitch' not found. Existing switches: $((Get-VMSwitch).Name -join ', ')"
-}
+# --- 3. LAN switch ----------------------------------------------------------
 if (-not (Get-VMSwitch -Name $LanSwitch -ErrorAction SilentlyContinue)) {
     Log "Creating private switch '$LanSwitch'"
     New-VMSwitch -Name $LanSwitch -SwitchType Private | Out-Null
