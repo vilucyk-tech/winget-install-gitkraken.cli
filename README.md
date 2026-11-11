@@ -37,3 +37,7 @@ gk auth login
 | `winget` is not recognized | Install/update "App Installer" from Microsoft Store |
 | `gk` not found after install | Open a new terminal |
 | Script blocked by execution policy | `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`, then `Unblock-File .\install.ps1` |
+
+## See also
+
+- [`chr/`](chr/README.md) — MikroTik RouterOS CHR virtual router in Hyper-V (`chr\New-ChrVm.ps1`).
